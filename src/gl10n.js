@@ -119,12 +119,19 @@
 // PRIVATE METHODS
 ///////////////////////////////////////////////////
 
+    /**
+     * Initialization method.
+     * @param  {Object} config Options object
+     * @return {this}
+     */
     Localize.prototype.init = function(config){
         if(this.initialized) return this.logger.warn('Already initialized');
         this.initialized = true;
 
         console.log('Gl10n: Init!', config);
         _extend(this, config);
+
+        !this.loaders && (this.loaders = {});
 
         //Expose a shortcut globally
         this.exportShorcut();
@@ -133,32 +140,65 @@
 
         //Get default locale.
         this.getLocaleFromQueryString();
+
+        return this;
     };
 
-
+    /**
+     * Load strings from configuration object.
+     * @return {this}
+     */
     Localize.prototype.loadInitialStrings = function(){
         Object.keys(this.strings).forEach(function(locale){
             if(this.locales.indexOf(locale) === -1) this.locales.push(locale);
         }, this);
+        return this;
     };
 
+    /**
+     * Method to localize `string` into the active
+     * locale code.
+     * @param  {String} string
+     * @param  {Object} options Options object
+     * @return {String}         Localized string
+     */
     Localize.prototype.localize = function(string, options){
         if(!this.locale || !this.locale[string]) return string;
         // if(options) string = this.interpolate(string, options);
         return this.locale[string];
     };
 
+    /**
+     *
+     * Set current locale to `code`, where code
+     * should be an [ISO][http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2]
+     * @param {String} code
+     */
     Localize.prototype.setLocale = function(code){
         if(! this.strings[code]) return this.logger.warn('Locale not supported', code);
         this.locale = this.strings[code];
         if(this.onUpdated) this.onUpdated.call(this, code);
     };
 
+    /**
+     * Scan query string to see if there is a locale
+     * code.
+     * @return {this}
+     */
     Localize.prototype.getLocaleFromQueryString = function(){
         var code = _getParameterByName(this.localeParam).replace(/\W/g, '');
         if(!code) return this;
         this.setLocale(code);
         return this;
+    };
+
+    /**
+     * Resource loader manager
+     * @param {String} id     ID of resource loader.
+     * @param {Function} loader Resource loader.
+     */
+    Localize.prototype.addResourceLoader = function(id, loader){
+
     };
 
     Localize.prototype.logger = console || _shimConsole();
