@@ -81,6 +81,31 @@
         return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
     };
 
+    //https://github.com/cowboy/javascript-sync-async-foreach
+    var _forEach = function(arr, each, done) {
+        var i = -1,
+            len = arr.length;
+        (function next(result) {
+            var async,
+                abort = (result === false);
+
+            do { ++i; } while (!(i in arr) && i !== len);
+
+            if (abort || i === len) {
+                if (done) done(!abort, arr);
+                return;
+            }
+            result = each.call({
+                async: function() {
+                    async = true;
+                    return next;
+                }
+            }, arr[i], i, arr);
+
+            if (!async) next(result);
+        }());
+    };
+
 ///////////////////////////////////////////////////
 // CONSTRUCTOR
 ///////////////////////////////////////////////////
@@ -131,7 +156,7 @@
         console.log('Gl10n: Init!', config);
         _extend(this, config);
 
-        !this.loaders && (this.loaders = {});
+        !this.loaders && (this.loaders = []);
 
         //Expose a shortcut globally
         this.exportShorcut();
@@ -140,6 +165,12 @@
 
         //Get default locale.
         this.getLocaleFromQueryString();
+
+        //Add default loader, simply check if its cached
+        this.addResourceLoader('cached', function(){
+            this.locale = this.strings[locale];
+        });
+
 
         return this;
     };
@@ -170,14 +201,16 @@
 
     /**
      *
-     * Set current locale to `code`, where code
+     * Set current locale to `locale`, where locale
      * should be an [ISO][http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2]
-     * @param {String} code
+     * @param {String} locale
      */
-    Localize.prototype.setLocale = function(code){
-        if(! this.strings[code]) return this.logger.warn('Locale not supported', code);
-        this.locale = this.strings[code];
-        if(this.onUpdated) this.onUpdated.call(this, code);
+    Localize.prototype.setLocale = function(locale){
+        if(this.locales.indexOf(locale) === -1) return this.logger.warn('Locale not supported', locale);
+        //Move to async implementation:
+        _forEach(this.loaders)
+        this.locale = this.strings[locale];
+        if(this.onUpdated) this.onUpdated.call(this, locale);
     };
 
     /**
@@ -198,7 +231,9 @@
      * @param {Function} loader Resource loader.
      */
     Localize.prototype.addResourceLoader = function(id, loader){
-
+        // this.loaders[id] = loader;
+        this.loaders.push(loader);
+        return this;
     };
 
     Localize.prototype.logger = console || _shimConsole();
