@@ -20,7 +20,18 @@ define(['gl10n', 'jquery'], function (Gl10n, $) {
     };
 
 	var gl10n = new Gl10n({
-        onUpdated:updateStrings
+        onUpdated:updateStrings,
+        locales:['ru'],
+        loaders:[
+            function(gl10n, locale){
+                console.log('we are here, can we load', locale);
+                // var done = this.async();
+                // done(false);
+            },
+            function(gl10n, locale){
+                console.log('what is that!!!')
+            }
+        ]
     });
 
     /**
@@ -30,6 +41,7 @@ define(['gl10n', 'jquery'], function (Gl10n, $) {
         var code = $(this).data('l10n');
         location = location.origin + location.pathname + "?lang="+code;
     });
+
 
 
 
