@@ -40,20 +40,17 @@
      * @return {Object}        Resulting object from
      *                         meging target to params.
      */
-    var _extend = function(target) {
-        var i = 1, length = arguments.length, source;
-        for ( ; i < length; i++ ) {
-            // Only deal with defined values
-            if ((source = arguments[i]) != undefined ){
-                Object.getOwnPropertyNames(source).forEach(function(k){
-                    var d = Object.getOwnPropertyDescriptor(source, k) || {value:source[k]};
-                    if (d.get) {
-                        target.__defineGetter__(k, d.get);
-                        if (d.set) target.__defineSetter__(k, d.set);
-                    } else if (target !== d.value) target[k] = d.value;
-                });
+    var _extend = function extend(target) {
+        var sources = [].slice.call(arguments, 1);
+        sources.forEach(function (source) {
+            for (var property in source) {
+                if(source[property] && source[property].constructor &&
+                    source[property].constructor === Object){
+                    target[property] = target[property] || {};
+                    target[property] = extend(target[property], source[property]);
+                } else target[property] = source[property];
             }
-        }
+        });
         return target;
     };
 
@@ -81,26 +78,29 @@
         return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
     };
 
-    //https://github.com/cowboy/javascript-sync-async-foreach
-    var _forEach = function(arr, each, done) {
-        var i = -1,
-            len = arr.length;
-        (function next(result) {
-            var async,
-                abort = (result === false);
 
-            do { ++i; } while (!(i in arr) && i !== len);
+    var _map = function(arr, done) {
+        var i    = -1,
+            len  = arr.length,
+            args = Array.prototype.slice.call(arguments, 2);
+        (function next(result) {
+            var each,
+                async,
+                abort = (typeof result === 'boolean');
+
+            do{ ++i; } while (!(i in arr) && i !== len);
 
             if (abort || i === len) {
-                if (done) done(!abort, arr);
-                return;
+                if(done) return done(result);
             }
-            result = each.call({
+
+            each = arr[i];
+            result = each.apply({
                 async: function() {
                     async = true;
                     return next;
                 }
-            }, arr[i], i, arr);
+            }, args);
 
             if (!async) next(result);
         }());
@@ -134,7 +134,8 @@
 
         config  = config || {};
 
-        _extend(config, Localize.defaults || options);
+        config = _extend({}, Localize.defaults || options, config);
+
         this.init(config);
     };
 
@@ -163,14 +164,17 @@
 
         this.loadInitialStrings();
 
+        //Add default loader, simply check if its cached
+        this.addResourceLoader('cached', function(gl10n, locale){
+            console.log('CHECK CACHED LOCALE');
+            if(gl10n.strings[locale]){
+                gl10n.bundle = gl10n.strings[locale];
+                return true;
+            }
+        }, 0);
+
         //Get default locale.
         this.getLocaleFromQueryString();
-
-        //Add default loader, simply check if its cached
-        this.addResourceLoader('cached', function(){
-            this.locale = this.strings[locale];
-        });
-
 
         return this;
     };
@@ -180,9 +184,10 @@
      * @return {this}
      */
     Localize.prototype.loadInitialStrings = function(){
+        console.log(this.locales)
         Object.keys(this.strings).forEach(function(locale){
             if(this.locales.indexOf(locale) === -1) this.locales.push(locale);
-        }, this);
+        }, this);console.log(this.locales)
         return this;
     };
 
@@ -194,9 +199,9 @@
      * @return {String}         Localized string
      */
     Localize.prototype.localize = function(string, options){
-        if(!this.locale || !this.locale[string]) return string;
+        if(!this.bundle || !this.bundle[string]) return string;
         // if(options) string = this.interpolate(string, options);
-        return this.locale[string];
+        return this.bundle[string];
     };
 
     /**
@@ -208,9 +213,13 @@
     Localize.prototype.setLocale = function(locale){
         if(this.locales.indexOf(locale) === -1) return this.logger.warn('Locale not supported', locale);
         //Move to async implementation:
-        _forEach(this.loaders)
-        this.locale = this.strings[locale];
-        if(this.onUpdated) this.onUpdated.call(this, locale);
+        var onLoadersDone = function(success){
+            console.log('ON LOADERS DONE', arguments);
+            this.locale = locale;
+            if(this.onUpdated) this.onUpdated.call(this, locale);
+        }.bind(this);
+
+        _map(this.loaders, onLoadersDone, this, locale);
     };
 
     /**
@@ -226,13 +235,16 @@
     };
 
     /**
+     * TODO: We should do this at a global scope? Meaning before
+     *       We create the instance?! Hoe we do this
      * Resource loader manager
      * @param {String} id     ID of resource loader.
      * @param {Function} loader Resource loader.
      */
-    Localize.prototype.addResourceLoader = function(id, loader){
+    Localize.prototype.addResourceLoader = function(id, loader, index){
         // this.loaders[id] = loader;
-        this.loaders.push(loader);
+        if(index !== undefined) this.loaders.splice(index, 0, loader);
+        else this.loaders.push(loader);
         return this;
     };
 
