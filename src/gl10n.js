@@ -110,7 +110,7 @@
 // CONSTRUCTOR
 ///////////////////////////////////////////////////
 
-	var options = {
+	var _OPTIONS = {
         locale: 'en',
         locales: ['en'],
         localeParam: 'lang',
@@ -134,12 +134,12 @@
 
         config  = config || {};
 
-        config = _extend({}, Localize.defaults || options, config);
+        config = _extend({}, Localize.DEFAULTS || _OPTIONS, config);
 
         this.init(config);
     };
 
-    Localize.defaults = options;
+    Localize.DEFAULTS = _OPTIONS;
 
 ///////////////////////////////////////////////////
 // PRIVATE METHODS
