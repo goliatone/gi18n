@@ -184,10 +184,10 @@
      * @return {this}
      */
     Localize.prototype.loadInitialStrings = function(){
-        console.log(this.locales)
         Object.keys(this.strings).forEach(function(locale){
             if(this.locales.indexOf(locale) === -1) this.locales.push(locale);
-        }, this);console.log(this.locales)
+        }, this);
+
         return this;
     };
 
@@ -212,9 +212,9 @@
      */
     Localize.prototype.setLocale = function(locale){
         if(this.locales.indexOf(locale) === -1) return this.logger.warn('Locale not supported', locale);
-        //Move to async implementation:
+
+        //TODO: Stub emit...
         var onLoadersDone = function(success){
-            console.log('ON LOADERS DONE', arguments);
             this.locale = locale;
             if(this.onUpdated) this.onUpdated.call(this, locale);
         }.bind(this);
